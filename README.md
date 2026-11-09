@@ -61,10 +61,19 @@ backend/app/
   core/         config、database、security、deps（鉴权依赖/审计）、errors、response、clock、demo
   services/     selection.py（纯领域算法）、selection_service.py（数据库编排）
   models.py     ORM 实体     schemas.py  请求/响应模型     main.py  应用入口
-docs/           requirements.md（SRS）、design.md（设计说明书）
+docs/           requirements.md（SRS）、design.md（设计说明书）、prd.md（产品需求）
 scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）
 data/           SQLite 数据文件（已被 .gitignore 忽略）
 ```
+
+## 文档
+
+| 文档 | 用途 |
+|---|---|
+| [docs/prd.md](docs/prd.md) | 产品需求：目标用户、核心功能、页面结构、设计令牌、验收标准 |
+| [docs/requirements.md](docs/requirements.md) | 软件需求规格说明书（SRS） |
+| [docs/design.md](docs/design.md) | 系统设计：架构、ER、状态机、算法、API 约定 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 团队协作：分支、提交、分工、冲突处理 |
 
 ## 核心接口
 
