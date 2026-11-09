@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from .api import admin, auth, publication, student
+from .api import admin, auth, publication, student, teacher
 from .core.config import settings
 from .core.database import Base, engine
 from .core.errors import AppError, ErrorCode
@@ -38,6 +38,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(student.router)
+app.include_router(teacher.router)
 app.include_router(admin.router)
 app.include_router(publication.router)
 

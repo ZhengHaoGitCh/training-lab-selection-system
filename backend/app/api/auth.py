@@ -70,13 +70,15 @@ def login_demo(db: Session = Depends(get_db)):
 
     admin = db.query(User).filter(User.role == Role.admin).first()
     student = db.query(User).filter(User.role == Role.student).first()
-    if not admin or not student:
+    teacher = db.query(User).filter(User.role == Role.mentor).first()
+    if not admin or not student or not teacher:
         raise AppError(ErrorCode.NOT_FOUND, '演示账号未初始化，请先执行 scripts/seed.py')
 
     return ok(
         {
             'admin': _token_payload(admin),
             'student': _token_payload(student),
+            'teacher': _token_payload(teacher),
         },
         '演示账号已返回',
     )

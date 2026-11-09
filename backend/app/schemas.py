@@ -65,6 +65,7 @@ class UserOut(ORMModel):
     role: Role
     email: str = ''
     lab_id: int | None = None
+    mentor_id: int | None = None
     obey_internal: bool
     obey_cross: bool
     is_active: bool
@@ -206,6 +207,16 @@ class InterviewOut(ORMModel):
     remark: str
     student_name: str = ''
     mentor_name: str = ''
+
+
+class TeacherInterviewIn(BaseModel):
+    student_id: int
+    round_id: int
+    score_attitude: int = Field(ge=0, le=25)
+    score_logic: int = Field(ge=0, le=20)
+    score_code: int = Field(ge=0, le=35)
+    score_time: int = Field(ge=0, le=20)
+    remark: str = ''
 
 
 class RunSelectionIn(BaseModel):

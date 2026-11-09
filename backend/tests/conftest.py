@@ -62,10 +62,10 @@ def clean_database(app_module):
         models.Offer,
         models.Interview,
         models.Intention,
+        models.User,
         models.Round,
         models.Mentor,
         models.Lab,
-        models.User,
     ):
         with engine.begin() as conn:
             conn.execute(model.__table__.delete())

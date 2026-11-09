@@ -83,6 +83,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(128), default='')
     phone: Mapped[str] = mapped_column(String(32), default='')
     lab_id: Mapped[int | None] = mapped_column(ForeignKey('labs.id'), nullable=True)
+    mentor_id: Mapped[int | None] = mapped_column(ForeignKey('mentors.id'), nullable=True)
     obey_internal: Mapped[bool] = mapped_column(Boolean, default=False)
     obey_cross: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

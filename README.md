@@ -7,7 +7,7 @@
 ## 快速开始
 
 ```bash
-# Windows PowerShell
+# Windows PowerShell（需要 Python ≥ 3.10；本仓库在 3.12 下验证）
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r backend\requirements.txt
@@ -22,9 +22,19 @@ uvicorn app.main:app --reload --port 8000 --app-dir backend
 
 | 角色 | 账号 |
 |---|---|
-| 教务管理员 | `admin` |
-| 监督/申诉受理 | `auditor` |
 | 学生 | `2023001` ~ `2023008` |
+| 老师（导师） | `t1001` ~ `t1007` |
+| 管理员 | `admin` |
+
+## 前端
+
+```powershell
+cd frontend
+npm install
+npm run dev          # http://127.0.0.1:5173，/api 代理到 8000
+```
+
+详见 `frontend/README.md`；生产构建用 `npm run build`。
 
 ## 冒烟演练
 
@@ -41,6 +51,7 @@ python scripts\demo_flow.py     # 一次跑完 填报→面试→选拔→确认
 
 - `backend/tests/test_selection.py`：核心算法单元测试（纯函数）。
 - `backend/tests/test_api.py`：接口全链路测试（含权限、幂等、校验、审计）。
+- `backend/tests/test_teacher_api.py`：老师端权限隔离与评分范围测试。
 
 ## 目录
 
@@ -64,6 +75,7 @@ data/           SQLite 数据文件（已被 .gitignore 忽略）
 | 鉴权 | `POST /auth/register`、`POST /auth/login`、`GET /auth/me` |
 | 元数据 | `GET /meta/labs`、`GET /meta/mentors`、`GET /meta/rounds` |
 | 学生 | `POST /student/intentions`、`GET /student/offers`、`POST /student/offers/confirm-unique`、`GET /student/status` |
+| 老师 | `GET /teacher/profile`、`GET /teacher/applicants`、`GET/POST /teacher/interviews`、`GET /teacher/offers` |
 | 管理 | `POST /admin/labs`、`POST /admin/mentors`、`POST /admin/interviews`、`POST /admin/run-selection` |
 | 录取 | `POST /admin/expire-offers`、`POST /admin/fill-vacancy/{mentor_id}`、`POST /admin/adjust`、`POST /admin/assign-talk` |
 | 公示 | `POST /admin/publications`、`POST /admin/publications/{id}/publish`、`POST /student/appeals` |

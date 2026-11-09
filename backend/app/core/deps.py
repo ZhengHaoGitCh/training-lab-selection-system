@@ -61,6 +61,14 @@ def get_current_student(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def get_current_mentor(user: User = Depends(get_current_user)) -> User:
+    if user.role != Role.mentor:
+        raise AppError(ErrorCode.FORBIDDEN, '仅老师可执行该操作')
+    if not user.mentor_id:
+        raise AppError(ErrorCode.FORBIDDEN, '老师账号未绑定导师档案')
+    return user
+
+
 def client_ip(request: Request) -> str:
     forwarded = request.headers.get('x-forwarded-for')
     if forwarded:

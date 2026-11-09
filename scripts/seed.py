@@ -70,21 +70,20 @@ STUDENTS = [
 
 STAFF = [
     ('admin', '教务管理员', models.Role.admin),
-    ('auditor', '监督受理员', models.Role.auditor),
 ]
 
 
 def build_rounds() -> list[models.Round]:
-    base = utcnow().replace(hour=8, minute=0, second=0, microsecond=0)
+    base = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     plan = [
-        ('宣讲会', models.RoundKind.briefing, 0, 0),
-        ('开放日', models.RoundKind.open_day, 0, 1),
-        ('第一轮志愿填报', models.RoundKind.intention, 2, 3),
-        ('第一轮统一面试', models.RoundKind.interview, 3, 4),
-        ('拟录取确认', models.RoundKind.confirm, 4, 5),
-        ('分轮补录', models.RoundKind.supplement, 6, 8),
-        ('统筹调剂', models.RoundKind.adjust, 9, 10),
-        ('结果公示', models.RoundKind.publish, 11, 12),
+        ('宣讲会', models.RoundKind.briefing, -2, -2),
+        ('开放日', models.RoundKind.open_day, -2, -1),
+        ('第一轮志愿填报', models.RoundKind.intention, -1, 0),
+        ('第一轮统一面试', models.RoundKind.interview, 0, 0),
+        ('拟录取确认', models.RoundKind.confirm, 0, 1),
+        ('分轮补录', models.RoundKind.supplement, 1, 3),
+        ('统筹调剂', models.RoundKind.adjust, 3, 4),
+        ('结果公示', models.RoundKind.publish, 4, 5),
     ]
     return [
         models.Round(
@@ -103,6 +102,7 @@ def seed(keep: bool = False) -> None:
     db = SessionLocal()
     try:
         if not keep:
+            # 用户引用 labs/mentors，必须先删用户再删实训室与导师
             for model in (
                 models.AuditLog,
                 models.Appeal,
@@ -110,10 +110,10 @@ def seed(keep: bool = False) -> None:
                 models.Offer,
                 models.Interview,
                 models.Intention,
+                models.User,
                 models.Round,
                 models.Mentor,
                 models.Lab,
-                models.User,
             ):
                 db.query(model).delete(synchronize_session=False)
             db.commit()
@@ -121,6 +121,28 @@ def seed(keep: bool = False) -> None:
         if db.query(models.Lab).count() > 0:
             print('已存在业务数据，跳过建库（使用 --keep 可重复执行）')
             return
+
+        mentors: list[tuple[models.Lab, models.Mentor]] = []
+        for lab_spec in LABS:
+            lab = models.Lab(
+                name=lab_spec['name'],
+                capacity=lab_spec['capacity'],
+                direction=lab_spec['direction'],
+                description=lab_spec['description'],
+                open_day_at=utcnow() + timedelta(days=1),
+            )
+            db.add(lab)
+            db.flush()
+            for mentor_name, quota, requirement in lab_spec['mentors']:
+                mentor = models.Mentor(
+                    lab_id=lab.id,
+                    name=mentor_name,
+                    quota=quota,
+                    requirement=requirement,
+                )
+                db.add(mentor)
+                db.flush()
+                mentors.append((lab, mentor))
 
         for no, name, role in STAFF:
             db.add(
@@ -144,25 +166,17 @@ def seed(keep: bool = False) -> None:
                 )
             )
 
-        for lab_spec in LABS:
-            lab = models.Lab(
-                name=lab_spec['name'],
-                capacity=lab_spec['capacity'],
-                direction=lab_spec['direction'],
-                description=lab_spec['description'],
-                open_day_at=utcnow() + timedelta(days=1),
-            )
-            db.add(lab)
-            db.flush()
-            for mentor_name, quota, requirement in lab_spec['mentors']:
-                db.add(
-                    models.Mentor(
-                        lab_id=lab.id,
-                        name=mentor_name,
-                        quota=quota,
-                        requirement=requirement,
-                    )
+        for index, (lab, mentor) in enumerate(mentors, start=1):
+            db.add(
+                models.User(
+                    student_no=f't{1000 + index}',
+                    name=mentor.name,
+                    role=models.Role.mentor,
+                    password_hash=hash_password(DEMO_PASSWORD),
+                    lab_id=lab.id,
+                    mentor_id=mentor.id,
                 )
+            )
 
         for round_obj in build_rounds():
             db.add(round_obj)
@@ -170,7 +184,9 @@ def seed(keep: bool = False) -> None:
         db.commit()
         print('种子数据写入完成')
         print(f'  演示账号密码统一为: {DEMO_PASSWORD}')
-        print('  管理员: admin    监督: auditor    学生: 2023001 ~ 2023008')
+        print('  管理员: admin')
+        print(f'  老师: t1001 ~ t{1000 + len(mentors)}')
+        print('  学生: 2023001 ~ 2023008')
     finally:
         db.close()
 
