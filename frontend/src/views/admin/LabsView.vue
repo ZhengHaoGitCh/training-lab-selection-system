@@ -8,10 +8,6 @@
       <el-button v-if="canEdit" type="primary" @click="openLabDialog()">新建实训室</el-button>
     </PageHeader>
 
-    <div v-if="!canEdit" class="callout" style="margin-bottom: 14px">
-      当前角色为只读（监督），不能新增、修改或删除基础数据。
-    </div>
-
     <el-tabs v-model="tab" class="card tabs-card">
       <el-tab-pane label="实训室" name="labs">
         <div class="table-wrap">

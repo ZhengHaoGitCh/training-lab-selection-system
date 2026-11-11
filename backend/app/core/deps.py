@@ -52,7 +52,6 @@ def require_roles(*roles: Role):
 
 
 require_admin = require_roles(Role.admin)
-require_staff = require_roles(Role.admin, Role.auditor)
 
 
 def get_current_student(user: User = Depends(get_current_user)) -> User:

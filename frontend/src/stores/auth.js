@@ -24,14 +24,13 @@ export const useAuthStore = defineStore('auth', {
     isStudent: (state) => state.user?.role === 'student',
     isTeacher: (state) => state.user?.role === 'mentor',
     isAdmin: (state) => state.user?.role === 'admin',
-    isStaff: (state) => ['admin', 'auditor'].includes(state.user?.role),
     displayName: (state) => state.user?.name || state.user?.student_no || '访客',
     roleText: (state) => ROLE_TEXT[state.user?.role] || '',
     homePath: (state) => {
       const role = state.user?.role
       if (role === 'student') return '/student'
       if (role === 'mentor') return '/teacher'
-      if (role === 'admin' || role === 'auditor') return '/admin'
+      if (role === 'admin') return '/admin'
       return '/'
     },
   },

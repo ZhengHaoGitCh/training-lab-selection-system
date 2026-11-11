@@ -8,10 +8,6 @@
       <el-button @click="loadOffers">刷新名单</el-button>
     </PageHeader>
 
-    <div v-if="!canAct" class="callout callout--orange" style="margin-bottom: 14px">
-      当前角色为只读（监督），可以查看名单与预演结果，但不能执行正式选拔、补录、调剂或约谈安置。
-    </div>
-
     <el-tabs v-model="activeTab" class="card tabs-card">
       <el-tab-pane label="运行选拔" name="run">
         <div class="pane-grid">

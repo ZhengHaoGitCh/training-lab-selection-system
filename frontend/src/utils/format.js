@@ -54,7 +54,6 @@ export const ROLE_TEXT = {
   student: '学生',
   mentor: '老师',
   admin: '管理员',
-  auditor: '监督',
 }
 
 export const STAGE_TEXT = {

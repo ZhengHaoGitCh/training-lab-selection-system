@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..core.database import get_db
 from ..core.clock import utcnow
-from ..core.deps import client_ip, get_current_student, require_staff, write_audit
+from ..core.deps import client_ip, get_current_student, require_admin, write_audit
 from ..core.errors import AppError, ErrorCode
 from ..core.response import ok
 from ..schemas import AppealHandleIn, AppealIn, PublicationIn
@@ -96,7 +96,7 @@ def create_publication(
     payload: PublicationIn,
     request: Request,
     db: Session = Depends(get_db),
-    actor: models.User = Depends(require_staff),
+    actor: models.User = Depends(require_admin),
 ):
     row = models.Publication(**payload.model_dump())
     db.add(row)
@@ -113,7 +113,7 @@ def create_publication(
 def publish(
     publication_id: int,
     db: Session = Depends(get_db),
-    actor: models.User = Depends(require_staff),
+    actor: models.User = Depends(require_admin),
 ):
     row = db.get(models.Publication, publication_id)
     if not row:
@@ -131,7 +131,7 @@ def publish(
 @router.get('/admin/publications')
 def list_publications(
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     rows = db.query(models.Publication).order_by(models.Publication.id.desc()).all()
     return ok(
@@ -234,7 +234,7 @@ def my_appeals(
 def list_appeals(
     status: models.AppealStatus | None = None,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.Appeal)
     if status:
@@ -263,7 +263,7 @@ def handle_appeal(
     appeal_id: int,
     payload: AppealHandleIn,
     db: Session = Depends(get_db),
-    actor: models.User = Depends(require_staff),
+    actor: models.User = Depends(require_admin),
 ):
     row = db.get(models.Appeal, appeal_id)
     if not row:
@@ -283,7 +283,7 @@ def handle_appeal(
 @router.get('/admin/enrollment')
 def enrollment_list(
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     rows = (
         db.query(models.Offer)

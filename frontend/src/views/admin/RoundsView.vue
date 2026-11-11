@@ -8,10 +8,6 @@
       <el-button v-if="canEdit" type="primary" @click="openDialog()">新建轮次</el-button>
     </PageHeader>
 
-    <div v-if="!canEdit" class="callout" style="margin-bottom: 14px">
-      当前角色为只读（监督），不能新建或修改轮次。
-    </div>
-
     <div class="card">
       <div class="table-wrap">
         <el-table :data="rounds" row-key="id" stripe>

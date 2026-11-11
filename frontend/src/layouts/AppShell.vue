@@ -147,7 +147,7 @@ const navItems = computed(() => {
   if (!auth.isLoggedIn) return guestNav
   if (auth.isStudent) return studentNav
   if (auth.isTeacher) return teacherNav
-  if (auth.isStaff) return adminNav
+  if (auth.isAdmin) return adminNav
   return guestNav
 })
 

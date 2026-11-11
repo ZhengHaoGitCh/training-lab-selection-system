@@ -211,7 +211,14 @@ def test_role_isolation_and_demo_login(client, setup_data):
     )
     assert resp.status_code == 403
 
+    resp = client.get('/admin/dashboard', headers=_auth(setup_data['teacher_token']))
+    assert resp.status_code == 403
+
     demo = client.post('/auth/login-demo').json()['data']
     assert demo['teacher']['user']['role'] == 'mentor'
     assert demo['admin']['user']['role'] == 'admin'
     assert demo['student']['user']['role'] == 'student'
+
+
+def test_roles_are_limited_to_student_mentor_admin():
+    assert {role.value for role in models.Role} == {'student', 'mentor', 'admin'}

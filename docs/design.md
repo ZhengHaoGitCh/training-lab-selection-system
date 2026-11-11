@@ -23,7 +23,7 @@ flowchart LR
 
 | 表 | 关键字段 | 说明 |
 |---|---|---|
-| `users` | id, student_no(uniq), name, role, password_hash, lab_id, obey_internal, obey_cross | 学生/导师/教务/监督四类角色 |
+| `users` | id, student_no(uniq), name, role, password_hash, lab_id, obey_internal, obey_cross | 学生/导师/管理员三类角色 |
 | `labs` | id, name(uniq), capacity, direction, open_day_at | 实训室与容量 |
 | `mentors` | id, lab_id, name, quota, requirement, is_active | 导师名额，合计不得超容量 |
 | `rounds` | id, name, kind, round_no, starts_at, ends_at | 轮次与时间窗口 |

@@ -23,7 +23,6 @@ class Role(str, enum.Enum):
     student = 'student'
     mentor = 'mentor'
     admin = 'admin'
-    auditor = 'auditor'
 
 
 class Decision(str, enum.Enum):

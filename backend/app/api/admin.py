@@ -11,7 +11,6 @@ from ..core.deps import (
     client_ip,
     ensure_in_window,
     require_admin,
-    require_staff,
     write_audit,
 )
 from ..core.errors import AppError, ErrorCode
@@ -37,7 +36,7 @@ router = APIRouter(prefix='/admin', tags=['admin'])
 # ---------------- 实训室 ----------------
 
 @router.get('/labs')
-def list_labs(db: Session = Depends(get_db), _: models.User = Depends(require_staff)):
+def list_labs(db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
     items = []
     for lab in db.query(models.Lab).order_by(models.Lab.id).all():
         mentors = [m for m in lab.mentors if m.is_active]
@@ -125,7 +124,7 @@ def list_mentors(
     lab_id: int | None = None,
     keyword: str = '',
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.Mentor)
     if lab_id:
@@ -228,7 +227,7 @@ def delete_mentor(
 # ---------------- 轮次 ----------------
 
 @router.get('/rounds')
-def list_rounds(db: Session = Depends(get_db), _: models.User = Depends(require_staff)):
+def list_rounds(db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
     now = utcnow()
     rows = db.query(models.Round).order_by(models.Round.starts_at).all()
     return ok(
@@ -291,7 +290,7 @@ def upsert_interview(
     payload: InterviewIn,
     request: Request,
     db: Session = Depends(get_db),
-    actor: models.User = Depends(require_staff),
+    actor: models.User = Depends(require_admin),
 ):
     student = db.get(models.User, payload.student_id)
     mentor = db.get(models.Mentor, payload.mentor_id)
@@ -365,7 +364,7 @@ def list_interviews(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = 0,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.Interview)
     if round_id:
@@ -435,7 +434,7 @@ def list_offers(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = 0,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.Offer)
     if round_id:
@@ -553,7 +552,7 @@ def audit_logs(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = 0,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.AuditLog)
     if action:
@@ -584,7 +583,7 @@ def audit_logs(
 
 
 @router.get('/dashboard')
-def dashboard(db: Session = Depends(get_db), _: models.User = Depends(require_staff)):
+def dashboard(db: Session = Depends(get_db), _: models.User = Depends(require_admin)):
     now = utcnow()
     quota_total = db.query(func.coalesce(func.sum(models.Mentor.quota), 0)).scalar() or 0
     confirmed = (
@@ -627,7 +626,7 @@ def list_students(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = 0,
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_staff),
+    _: models.User = Depends(require_admin),
 ):
     query = db.query(models.User).filter(models.User.role == models.Role.student)
     if keyword:
