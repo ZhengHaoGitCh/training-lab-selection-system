@@ -61,6 +61,30 @@ uvicorn app.main:app --reload --port 8000 --app-dir backend
 
 `seed.py` 默认会清空业务表，已有数据时用 `--keep`；不建议在 Navicat 里手工修改 `offers`、`intentions` 等业务表，避免破坏名额与状态一致性。
 
+## 数据库备份与迁移
+
+脚本为 `scripts/db.py`，备份默认写入 `backups/`（已在 `.gitignore` 中忽略）。
+
+```powershell
+# 备份当前 DATABASE_URL：MySQL 调用 mysqldump，SQLite 复制数据库文件
+.\.venv\Scripts\python.exe scripts\db.py backup
+
+# 指定输出目录和前缀
+.\.venv\Scripts\python.exe scripts\db.py backup --output-dir backups --prefix nightly
+
+# SQLite -> 目标库（默认取 .env 的 DATABASE_URL）
+# 目标为空库时可直接执行；已有数据时加 --truncate --yes，脚本会先备份目标库
+.\.venv\Scripts\python.exe scripts\db.py migrate --source sqlite:///data/app.db --truncate --yes
+
+# 从备份恢复（会覆盖当前库，需 --yes；脚本会先生成 pre-restore 备份）
+.\.venv\Scripts\python.exe scripts\db.py restore --file backups\xxx.sql --yes
+```
+
+- `migrate` 按 labs → mentors → rounds → users → 业务表 → 审计表的顺序复制，保留原 ID；目标库非空且未加 `--truncate` 时会拒绝执行。
+- MySQL 备份依赖 `mysqldump`，恢复依赖 `mysql`；脚本会自动查找常见安装路径，也可用 `--mysqldump-path` / `--mysql-path` 指定。
+- 恢复前先停止后端，避免连接占用；`backups/` 含真实数据，不要提交或外发。
+- 当前方案是数据迁移，不是 Alembic 版本化迁移；后续若需要按版本升级表结构，再单独引入 Alembic。
+
 ## 前端
 
 ```powershell
@@ -87,6 +111,7 @@ python scripts\demo_flow.py     # 一次跑完 填报→面试→选拔→确认
 - `backend/tests/test_selection.py`：核心算法单元测试（纯函数）。
 - `backend/tests/test_api.py`：接口全链路测试（含权限、幂等、校验、审计）。
 - `backend/tests/test_teacher_api.py`：老师端权限隔离与评分范围测试。
+- `backend/tests/test_db_tools.py`：数据库备份/恢复与 SQLite→SQLite 迁移脚本测试。
 
 ## 目录
 
@@ -97,7 +122,7 @@ backend/app/
   services/     selection.py（纯领域算法）、selection_service.py（数据库编排）
   models.py     ORM 实体     schemas.py  请求/响应模型     main.py  应用入口
 docs/           requirements.md（SRS）、design.md（设计说明书）、prd.md（产品需求）
-scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）
+scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）、db.py（备份/迁移/恢复）
 data/           SQLite 数据文件（默认数据库，已被 .gitignore 忽略）
 ```
 

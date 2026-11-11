@@ -23,6 +23,9 @@ Thumbs.db
 *.zip
 export/
 
+# 数据库备份
+backups/
+
 # 前端
 frontend/node_modules/
 frontend/dist/

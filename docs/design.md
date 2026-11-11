@@ -96,6 +96,7 @@ stateDiagram-v2
 
 - **单元测试**：`tests/test_selection.py` 覆盖分数裁剪、平局、多意向确认、幂等、逾期、递补、调剂优先级。
 - **接口测试**：`tests/test_api.py` 使用 TestClient + 临时 SQLite，覆盖注册登录、越权、志愿上限、选拔幂等、dry-run、补录、调剂、公示申诉、审计。
+- **脚本测试**：`tests/test_db_tools.py` 覆盖 SQLite 备份/恢复、迁移复制和非空目标拒绝。
 - **端到端剧本**：`scripts/demo_flow.py` 串起 7 个阶段的真实调用。
 
 ## 7. 部署
@@ -103,7 +104,7 @@ stateDiagram-v2
 | 环境 | 配置 |
 |---|---|
 | 开发 | SQLite（`data/app.db`）或 MySQL 8（见 README）+ `uvicorn --reload` |
-| 生产 | PostgreSQL、反向代理 + HTTPS、Redis 限流、集中日志、每日备份与审计归档 |
+| 生产 | PostgreSQL、反向代理 + HTTPS、Redis 限流、集中日志、每日备份（`scripts/db.py backup`）与审计归档 |
 
 关键环境变量：`DATABASE_URL`、`SECRET_KEY`、`DEMO_MODE`、`ENFORCE_TIME_WINDOW`、`CORS_ORIGINS`。
 
