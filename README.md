@@ -18,6 +18,25 @@ uvicorn app.main:app --reload --port 8000 --app-dir backend
 
 访问 <http://127.0.0.1:8000/docs> 查看 Swagger。
 
+## 一键启动（Windows）
+
+准备好 `.venv`、`frontend/node_modules` 和数据库后，可在项目根目录使用：
+
+```powershell
+.\dev.cmd start              # 启动后端 + 前端
+.\dev.cmd status             # 查看 PID、端口、健康状态
+.\dev.cmd stop               # 停止两端
+.\dev.cmd restart            # 重启两端
+
+.\dev.cmd start -Target backend    # 只启动后端
+.\dev.cmd start -Target frontend   # 只启动前端
+.\dev.cmd start -OpenBrowser       # 启动并打开浏览器
+```
+
+- 后台运行，PID 写在 `.run/`，日志写在 `logs/`（两者都已 gitignore）。
+- 只终止本项目进程；端口被其他程序占用时会提示，不会误杀。
+- 脚本不会自动执行 `seed.py`，避免清空已有业务数据；首次使用请先按上面的快速开始准备数据库。
+
 演示账号（由 `scripts/seed.py` 生成，口令见 `backend/app/core/demo.py`，可用 `DEMO_PASSWORD` 环境变量覆盖）：
 
 | 角色 | 账号 |
@@ -122,7 +141,7 @@ backend/app/
   services/     selection.py（纯领域算法）、selection_service.py（数据库编排）
   models.py     ORM 实体     schemas.py  请求/响应模型     main.py  应用入口
 docs/           requirements.md（SRS）、design.md（设计说明书）、prd.md（产品需求）
-scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）、db.py（备份/迁移/恢复）
+scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）、db.py（备份/迁移/恢复）、dev.ps1（启动管理）
 data/           SQLite 数据文件（默认数据库，已被 .gitignore 忽略）
 ```
 
