@@ -16,8 +16,17 @@ if url.startswith('sqlite:///'):
     db_path.parent.mkdir(parents=True, exist_ok=True)
     url = f'sqlite:///{db_path.as_posix()}'
 
-connect_args = {'check_same_thread': False} if url.startswith('sqlite') else {}
-engine = create_engine(url, future=True, connect_args=connect_args)
+if url.startswith('sqlite'):
+    connect_args = {'check_same_thread': False}
+    engine_options = {}
+elif url.startswith('mysql'):
+    connect_args = {'charset': 'utf8mb4'}
+    engine_options = {'pool_pre_ping': True, 'pool_recycle': 3600}
+else:
+    connect_args = {}
+    engine_options = {}
+
+engine = create_engine(url, future=True, connect_args=connect_args, **engine_options)
 
 if url.startswith('sqlite'):
     @event.listens_for(engine, 'connect')

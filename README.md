@@ -2,7 +2,7 @@
 
 把“学生实训室选组选拔流程”软件工程化：宣讲/开放日信息采集 → 平行志愿填报 → 统一面试评分 → 拟录取确认 → 分轮补录 → 统筹调剂 → 公示与入组。
 
-后端：FastAPI + SQLAlchemy + SQLite（可切 PostgreSQL）。
+后端：FastAPI + SQLAlchemy；默认 SQLite，支持 MySQL（本机演示）与 PostgreSQL（生产）。
 
 ## 快速开始
 
@@ -25,6 +25,41 @@ uvicorn app.main:app --reload --port 8000 --app-dir backend
 | 学生 | `2023001` ~ `2023008` |
 | 老师（导师） | `t1001` ~ `t1007` |
 | 管理员 | `admin` |
+
+## 数据库（MySQL / Navicat）
+
+默认使用 SQLite（`data/app.db`），无需额外配置；`pytest` 也固定使用临时 SQLite。需要本机 MySQL 8 + Navicat 管理时：
+
+1. 用 root 在 Navicat 新建查询，创建库与专用账号（把 `CHANGE_ME` 换成你的口令）：
+
+   ```sql
+   CREATE DATABASE IF NOT EXISTS training_lab_selection
+     DEFAULT CHARACTER SET utf8mb4
+     DEFAULT COLLATE utf8mb4_unicode_ci;
+
+   CREATE USER IF NOT EXISTS 'lab_dev'@'localhost' IDENTIFIED BY 'CHANGE_ME';
+   GRANT ALL PRIVILEGES ON training_lab_selection.* TO 'lab_dev'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+2. 在项目根目录创建 `.env`（已被 `.gitignore` 忽略，可参考 `.env.example`），把默认 SQLite 行注释掉，写入：
+
+   ```dotenv
+   DATABASE_URL=mysql+pymysql://lab_dev:你的口令@localhost:3306/training_lab_selection?charset=utf8mb4
+   ```
+
+   口令含 `!`、`@` 等特殊字符时要 URL 编码（例如 `!` 写成 `%21`）。
+
+3. 安装依赖并写入演示数据：
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+   .\.venv\Scripts\python.exe scripts\seed.py
+   ```
+
+4. 启动后端后，在 Navicat 中新建连接（主机 `localhost`、端口 `3306`、用户 `lab_dev`、数据库 `training_lab_selection`）并刷新，即可看到 `users`、`labs`、`mentors`、`offers` 等表。
+
+`seed.py` 默认会清空业务表，已有数据时用 `--keep`；不建议在 Navicat 里手工修改 `offers`、`intentions` 等业务表，避免破坏名额与状态一致性。
 
 ## 前端
 
@@ -63,7 +98,7 @@ backend/app/
   models.py     ORM 实体     schemas.py  请求/响应模型     main.py  应用入口
 docs/           requirements.md（SRS）、design.md（设计说明书）、prd.md（产品需求）
 scripts/        seed.py（种子数据）、demo_flow.py（端到端演练）
-data/           SQLite 数据文件（已被 .gitignore 忽略）
+data/           SQLite 数据文件（默认数据库，已被 .gitignore 忽略）
 ```
 
 ## 文档

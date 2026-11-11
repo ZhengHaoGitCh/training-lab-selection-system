@@ -2,7 +2,7 @@
 
 ## 1. 架构
 
-分层架构：`API (FastAPI)` → `Service（领域算法 + 编排）` → `Repository (SQLAlchemy)` → `SQLite / PostgreSQL`。
+分层架构：`API (FastAPI)` → `Service（领域算法 + 编排）` → `Repository (SQLAlchemy)` → `SQLite（默认/测试）/ MySQL（本机演示）/ PostgreSQL（生产）`。
 
 ```mermaid
 flowchart LR
@@ -11,7 +11,7 @@ flowchart LR
     DEPS --> SVC["services/selection_service.py"]
     SVC --> PURE["services/selection.py（纯函数领域算法）"]
     SVC --> ORM["SQLAlchemy ORM"]
-    ORM --> DB[("SQLite dev / PostgreSQL prod")]
+    ORM --> DB[("SQLite 默认/测试 · MySQL 本机演示 · PostgreSQL 生产")]
 ```
 
 设计原则：
@@ -102,7 +102,7 @@ stateDiagram-v2
 
 | 环境 | 配置 |
 |---|---|
-| 开发 | SQLite（`data/app.db`）+ `uvicorn --reload` |
+| 开发 | SQLite（`data/app.db`）或 MySQL 8（见 README）+ `uvicorn --reload` |
 | 生产 | PostgreSQL、反向代理 + HTTPS、Redis 限流、集中日志、每日备份与审计归档 |
 
 关键环境变量：`DATABASE_URL`、`SECRET_KEY`、`DEMO_MODE`、`ENFORCE_TIME_WINDOW`、`CORS_ORIGINS`。
