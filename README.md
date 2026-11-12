@@ -152,6 +152,7 @@ data/           SQLite 数据文件（默认数据库，已被 .gitignore 忽略
 | [docs/prd.md](docs/prd.md) | 产品需求：目标用户、核心功能、页面结构、设计令牌、验收标准 |
 | [docs/requirements.md](docs/requirements.md) | 软件需求规格说明书（SRS） |
 | [docs/design.md](docs/design.md) | 系统设计：架构、ER、状态机、算法、API 约定 |
+| [docs/defense-guide.md](docs/defense-guide.md) | 答辩演示顺序、账号、验收清单与故障排查 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 团队协作：分支、提交、分工、冲突处理 |
 
 ## 核心接口

@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from app import models  # noqa: E402
 from app.core.clock import utcnow  # noqa: E402
 from app.core.database import SessionLocal  # noqa: E402
+from app.core.deps import write_audit  # noqa: E402
 from app.services import selection_service as service  # noqa: E402
 
 
@@ -175,7 +176,7 @@ def main() -> None:
         line('7. 公示与入组')
         pub = models.Publication(
             round_id=intention_round.id,
-            title='2026 春季实训室选组拟录取名单公示',
+            title=f'{utcnow().year} 年实训室选组拟录取名单公示',
             content='公示期 1 天，如有异议请通过系统提交实名申诉。',
             status=models.PublicationStatus.published,
             published_at=utcnow(),
@@ -183,6 +184,16 @@ def main() -> None:
         )
         db.add(pub)
         db.commit()
+        db.refresh(pub)
+        write_audit(
+            db,
+            actor=admin,
+            action='create_publication',
+            entity='publication',
+            entity_id=pub.id,
+            after={'title': pub.title, 'status': pub.status.value},
+            commit=True,
+        )
         print(f'  已发布公示 #{pub.id}')
 
         confirmed = (
