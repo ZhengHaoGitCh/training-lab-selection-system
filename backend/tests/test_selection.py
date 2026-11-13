@@ -219,3 +219,23 @@ def test_adjustment_shares_quota_across_many_mentors():
     assert per_mentor == {10: 2, 20: 1}, per_mentor
     assert len(allocations) == 3
     assert sorted(t['student_id'] for t in talk) == [4]
+
+
+def test_rank_interviews_honours_waitlist_and_internal_params():
+    """waitlist_size / internal_ratio 必须是生效参数（曾与配置项脱节）。"""
+    interviews = [
+        Interview(sid, 1, 25, 20, 35, 20 - sid) for sid in range(1, 9)
+    ]
+
+    strict = rank_interviews(interviews, 2, waitlist_size=1, internal_ratio=0.5)
+    # waitlist_slots = max(waitlist_size, quota) = max(1, 2) = 2
+    assert [strict[s].value for s in range(1, 9)] == [
+        'proposed', 'proposed', 'internal_candidate', 'waitlist',
+        'waitlist', 'rejected', 'rejected', 'rejected',
+    ]
+
+    loose = rank_interviews(interviews, 2, waitlist_size=5, internal_ratio=0.5)
+    assert [loose[s].value for s in range(1, 9)] == [
+        'proposed', 'proposed', 'internal_candidate', 'waitlist',
+        'waitlist', 'waitlist', 'waitlist', 'waitlist',
+    ]

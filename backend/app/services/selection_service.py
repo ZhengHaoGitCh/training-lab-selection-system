@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..core.errors import AppError, ErrorCode
 from ..core.clock import utcnow
+from ..core.config import settings
 from . import selection as sel
 
 
@@ -84,7 +85,12 @@ def run_selection(db: Session, *, round_id: int, confirm_minutes: int, dry_run: 
 
         domain_rows = [_to_domain_interview(x) for x in mentor_rows]
         quota = mentor_capacity(mentor)
-        decisions = sel.rank_interviews(domain_rows, quota)
+        decisions = sel.rank_interviews(
+            domain_rows,
+            quota,
+            waitlist_size=settings.waitlist_min_size,
+            internal_ratio=settings.internal_candidate_ratio,
+        )
 
         for row in mentor_rows:
             decision = decisions[row.student_id]

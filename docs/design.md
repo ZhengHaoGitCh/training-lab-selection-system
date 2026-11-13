@@ -63,7 +63,7 @@ stateDiagram-v2
 | 函数 | 职责 |
 |---|---|
 | `total_score` | 四维加总并裁剪到 100 分（25/20/35/20） |
-| `rank_interviews` | 按总分降序、学号升序打破平局；产出 `proposed → internal_candidate → waitlist → rejected` |
+| `rank_interviews` | 按总分降序、学号升序打破平局；产出 `proposed → internal_candidate → waitlist → rejected`。`waitlist_size` 与 `internal_ratio` 由配置 `WAITLIST_MIN_SIZE`/`INTERNAL_CANDIDATE_RATIO` 提供 |
 | `confirm_unique_offer` | 单意向自动确认、多意向强制选择、逾期拒绝、幂等 |
 | `expire_pending_offers` | 释放逾期意向 |
 | `available_quota` | 剩余名额 = min(quota, capacity) − (confirmed + pending) |
