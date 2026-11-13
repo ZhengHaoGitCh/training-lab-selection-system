@@ -144,6 +144,22 @@ class RoundIn(BaseModel):
         return value
 
 
+class RoundPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    kind: RoundKind | None = None
+    round_no: int | None = Field(default=None, ge=1, le=10)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+    @field_validator('ends_at')
+    @classmethod
+    def _check_range(cls, value: datetime | None, info):  # noqa: ANN001
+        start = info.data.get('starts_at')
+        if start and value and value <= start:
+            raise ValueError('ends_at 必须晚于 starts_at')
+        return value
+
+
 class RoundOut(ORMModel):
     id: int
     name: str
@@ -238,7 +254,6 @@ class RunSelectionOut(BaseModel):
 
 class ConfirmIn(BaseModel):
     mentor_id: int | None = None
-    now: datetime | None = None
 
 
 class OfferOut(ORMModel):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
@@ -122,8 +122,8 @@ def create_user(
 def list_users(
     role: Role | None = None,
     keyword: str = '',
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
@@ -134,7 +134,7 @@ def list_users(
         like = f'%{keyword}%'
         query = query.filter((User.name.like(like)) | (User.student_no.like(like)))
     total = query.count()
-    rows = query.order_by(User.id).limit(min(limit, 200)).offset(offset).all()
+    rows = query.order_by(User.id).limit(limit).offset(offset).all()
     return ok(
         {
             'total': total,

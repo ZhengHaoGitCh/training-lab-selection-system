@@ -530,3 +530,200 @@ def test_audit_log_records_actions(client, setup_data):
     actions = {item['action'] for item in logs['items']}
     assert 'submit_intentions' in actions
     assert 'create_lab' in actions
+
+
+# ---------- 回归：确认截止时间不可由客户端指定 ----------
+
+
+def test_confirm_ignores_client_supplied_now(client, db_session, setup_data):
+    """回归：ConfirmIn 曾暴露 ``now`` 字段，学生可传入早于截止的时间绕过逾期校验。"""
+    from datetime import datetime as _dt
+
+    token = setup_data['token']
+    mentor_id, round_id = setup_data['mentor_id'], setup_data['round_id']
+    student = _register(client, '2024080', '逾期学生')
+
+    client.post(
+        '/student/intentions',
+        json={'mentor_ids': [mentor_id], 'round_id': round_id},
+        headers=_auth(student['access_token']),
+    )
+    client.post(
+        '/admin/interviews',
+        json={
+            'student_id': db_session.query(models.User)
+            .filter(models.User.student_no == '2024080').one().id,
+            'mentor_id': mentor_id,
+            'round_id': round_id,
+            'score_attitude': 25,
+            'score_logic': 20,
+            'score_code': 35,
+            'score_time': 20,
+        },
+        headers=_auth(token),
+    )
+    client.post(
+        '/admin/run-selection',
+        json={'round_id': round_id, 'confirm_minutes': 60},
+        headers=_auth(token),
+    )
+    # 把 offer 置为已逾期
+    offer = (
+        db_session.query(models.Offer)
+        .filter(models.Offer.mentor_id == mentor_id)
+        .order_by(models.Offer.id.desc())
+        .first()
+    )
+    offer.expires_at = _dt.utcnow() - timedelta(minutes=5)
+    db_session.commit()
+
+    # 客户端带上伪造的 now（早于截止时间）也不应被采信
+    resp = client.post(
+        '/student/offers/confirm-unique',
+        json={'mentor_id': mentor_id, 'now': (offer.expires_at - timedelta(days=1)).isoformat()},
+        headers=_auth(student['access_token']),
+    )
+    assert resp.status_code == 409, resp.text
+    assert resp.json()['code'] == 3001
+
+
+def test_confirm_rejects_extra_now_field_ignored_not_500(client, setup_data):
+    """即使客户端传 tz-aware 的 now，也不应产生 500（该字段已被移除）。"""
+    student = _register(client, '2024081', '时区学生')
+    client.post(
+        '/student/intentions',
+        json={'mentor_ids': [setup_data['mentor_id']], 'round_id': setup_data['round_id']},
+        headers=_auth(student['access_token']),
+    )
+    resp = client.post(
+        '/student/offers/confirm-unique',
+        json={'mentor_id': setup_data['mentor_id'], 'now': '2030-01-01T00:00:00+00:00'},
+        headers=_auth(student['access_token']),
+    )
+    assert resp.status_code != 500, resp.text
+    assert resp.json()['code'] != 5000
+
+
+# ---------- 回归：轮次 PATCH 支持部分更新 ----------
+
+
+def test_update_round_is_partial(client, setup_data):
+    """回归：update_round 曾用全字段模型覆盖，PATCH 部分字段会重置 kind/round_no。"""
+    token = setup_data['token']
+    headers = _auth(token)
+
+    created = client.post(
+        '/admin/rounds',
+        json={
+            'name': '面试轮',
+            'kind': 'interview',
+            'round_no': 3,
+            'starts_at': '2026-03-01T08:00:00',
+            'ends_at': '2026-03-01T18:00:00',
+        },
+        headers=headers,
+    ).json()['data']['id']
+
+    resp = client.patch(
+        f'/admin/rounds/{created}',
+        json={'name': '面试轮（改名）'},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    row = next(
+        r for r in client.get('/admin/rounds', headers=headers).json()['data']
+        if r['id'] == created
+    )
+    assert row['name'] == '面试轮（改名）'
+    assert row['kind'] == 'interview', 'kind 被默认值覆盖了'
+    assert row['round_no'] == 3, 'round_no 被默认值覆盖了'
+
+
+def test_update_round_rejects_inverted_range(client, setup_data):
+    headers = _auth(setup_data['token'])
+    created = client.post(
+        '/admin/rounds',
+        json={
+            'name': '待改轮',
+            'kind': 'confirm',
+            'round_no': 2,
+            'starts_at': '2026-04-01T08:00:00',
+            'ends_at': '2026-04-01T18:00:00',
+        },
+        headers=headers,
+    ).json()['data']['id']
+
+    resp = client.patch(
+        f'/admin/rounds/{created}',
+        json={'ends_at': '2026-04-01T07:00:00'},
+        headers=headers,
+    )
+    assert resp.status_code == 400, resp.text
+    assert resp.json()['code'] == 1001
+
+
+# ---------- 回归：分页参数边界 ----------
+
+
+def test_negative_limit_is_rejected(client, setup_data):
+    """回归：limit 曾无下界，SQLite 下 limit=-1 等于不分页。"""
+    headers = _auth(setup_data['token'])
+    for path in ('/admin/offers', '/admin/interviews', '/admin/students', '/admin/audit-logs'):
+        resp = client.get(f'{path}?limit=-1', headers=headers)
+        assert resp.status_code == 422, f'{path} 未拒绝 limit=-1'
+        assert resp.json()['code'] == 1001
+
+    resp = client.get('/auth/users?limit=-1', headers=headers)
+    assert resp.status_code == 422
+    assert resp.json()['code'] == 1001
+
+
+def test_negative_offset_is_rejected(client, setup_data):
+    headers = _auth(setup_data['token'])
+    resp = client.get('/admin/offers?offset=-5', headers=headers)
+    assert resp.status_code == 422
+    assert resp.json()['code'] == 1001
+
+
+def test_offer_keyword_filter_applies_before_pagination(client, db_session, setup_data):
+    """回归：keyword 曾在分页之后于 Python 中过滤，导致 total 与实际不符。"""
+    token = setup_data['token']
+    mentor_id, round_id = setup_data['mentor_id'], setup_data['round_id']
+    headers = _auth(token)
+
+    for no, name in (('2024091', '关键字甲'), ('2024092', '关键字乙'), ('2024093', '旁人丙')):
+        s = _register(client, no, name)
+        client.post(
+            '/student/intentions',
+            json={'mentor_ids': [mentor_id], 'round_id': round_id},
+            headers=_auth(s['access_token']),
+        )
+
+    # 直接落库 3 条 offer（避免依赖选拔时序）
+    ids = {
+        u.student_no: u.id
+        for u in db_session.query(models.User)
+        .filter(models.User.student_no.in_(['2024091', '2024092', '2024093']))
+        .all()
+    }
+    for no, sid in ids.items():
+        db_session.add(
+            models.Offer(
+                student_id=sid,
+                mentor_id=mentor_id,
+                round_id=round_id,
+                offer_type=models.OfferType.regular,
+                status=models.OfferStatus.pending,
+                reason=f'测试 {no}',
+            )
+        )
+    db_session.commit()
+
+    body = client.get('/admin/offers?keyword=关键字', headers=headers).json()['data']
+    assert body['total'] == 2, f"total 应只计匹配项，实际 {body['total']}"
+    assert len(body['items']) == 2
+
+    body2 = client.get('/admin/offers?keyword=旁人', headers=headers).json()['data']
+    assert body2['total'] == 1
+    assert body2['items'][0]['student_no'] == '2024093'

@@ -25,6 +25,7 @@ from ..schemas import (
     MentorIn,
     MentorPatch,
     RoundIn,
+    RoundPatch,
     RunSelectionIn,
 )
 from ..services import selection_service as service
@@ -266,21 +267,37 @@ def create_round(
 @router.patch('/rounds/{round_id}')
 def update_round(
     round_id: int,
-    payload: RoundIn,
+    payload: RoundPatch,
     db: Session = Depends(get_db),
     actor: models.User = Depends(require_admin),
 ):
     round_obj = db.get(models.Round, round_id)
     if not round_obj:
         raise AppError(ErrorCode.NOT_FOUND, '轮次不存在')
-    for key, value in payload.model_dump().items():
+    data = payload.model_dump(exclude_unset=True)
+    if data.get('starts_at') and data.get('ends_at'):
+        if data['ends_at'] <= data['starts_at']:
+            raise AppError(ErrorCode.PARAM, 'ends_at 必须晚于 starts_at')
+    if 'starts_at' in data and 'ends_at' not in data and data['starts_at'] >= round_obj.ends_at:
+        raise AppError(ErrorCode.PARAM, 'starts_at 必须早于现有 ends_at')
+    if 'ends_at' in data and 'starts_at' not in data and data['ends_at'] <= round_obj.starts_at:
+        raise AppError(ErrorCode.PARAM, 'ends_at 必须晚于现有 starts_at')
+    before = {
+        'name': round_obj.name,
+        'kind': round_obj.kind.value,
+        'round_no': round_obj.round_no,
+        'starts_at': str(round_obj.starts_at),
+        'ends_at': str(round_obj.ends_at),
+    }
+    for key, value in data.items():
         setattr(round_obj, key, value)
     db.commit()
     write_audit(
         db, actor=actor, action='update_round', entity='round', entity_id=round_id,
-        after=payload.model_dump(mode='json'), commit=True,
+        before=before, after=payload.model_dump(exclude_unset=True, mode='json'), commit=True,
     )
-    return ok({'id': round_id})
+    return ok({'id': round_id, 'name': round_obj.name, 'kind': round_obj.kind.value,
+               'round_no': round_obj.round_no})
 
 
 # ---------------- 面试与选拔 ----------------
@@ -362,7 +379,7 @@ def list_interviews(
     round_id: int | None = None,
     mentor_id: int | None = None,
     limit: int = Query(default=100, ge=1, le=500),
-    offset: int = 0,
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: models.User = Depends(require_admin),
 ):
@@ -432,7 +449,7 @@ def list_offers(
     mentor_id: int | None = None,
     keyword: str = '',
     limit: int = Query(default=100, ge=1, le=500),
-    offset: int = 0,
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: models.User = Depends(require_admin),
 ):
@@ -443,6 +460,11 @@ def list_offers(
         query = query.filter(models.Offer.status == status)
     if mentor_id:
         query = query.filter(models.Offer.mentor_id == mentor_id)
+    if keyword:
+        like = f'%{keyword}%'
+        query = query.join(models.User, models.User.id == models.Offer.student_id).filter(
+            or_(models.User.name.like(like), models.User.student_no.like(like))
+        )
     total = query.count()
     rows = query.order_by(models.Offer.id.desc()).limit(limit).offset(offset).all()
 
@@ -451,8 +473,6 @@ def list_offers(
         student = db.get(models.User, row.student_id)
         mentor = db.get(models.Mentor, row.mentor_id)
         lab = db.get(models.Lab, mentor.lab_id) if mentor else None
-        if keyword and keyword not in f'{student.name if student else ""}{student.student_no if student else ""}':
-            continue
         items.append(
             {
                 'id': row.id,
@@ -550,7 +570,7 @@ def assign_talk(
 def audit_logs(
     action: str = '',
     limit: int = Query(default=100, ge=1, le=500),
-    offset: int = 0,
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: models.User = Depends(require_admin),
 ):
@@ -624,7 +644,7 @@ def dashboard(db: Session = Depends(get_db), _: models.User = Depends(require_ad
 def list_students(
     keyword: str = '',
     limit: int = Query(default=100, ge=1, le=500),
-    offset: int = 0,
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: models.User = Depends(require_admin),
 ):

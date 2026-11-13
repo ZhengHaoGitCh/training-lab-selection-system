@@ -17,6 +17,9 @@ from .core.response import fail, ok
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger = logging.getLogger('selection')
 
+for _warning in settings.production_warnings():
+    logger.warning('不安全的生产配置：%s', _warning)
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -31,7 +34,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    allow_credentials=settings.cors_allow_credentials,
     allow_methods=['*'],
     allow_headers=['*'],
 )

@@ -276,12 +276,23 @@ def plan_adjustments(
     internal_vacancies / cross_vacancies 形如
     ``{'mentor_id': 10, 'lab_id': 2, 'quota_left': 1}``（会被就地扣减）。
 
+    同一导师可能同时出现在两个池中（内部池用于同实训室匹配，跨室池用于
+    任意实训室匹配）。名额以**导师**为粒度共享：任一次分配都会同步扣减该
+    导师在两个池中的剩余名额，避免两轮各自扣减同一份名额造成超发。
+
     返回 ``(allocations, talk_list)``：
     - allocations: ``{'student_id','mentor_id','lab_id','mode'}``
     - talk_list: 未服从调剂、需约谈安置的学生
     """
     internal = [dict(v) for v in internal_vacancies]
     cross = [dict(v) for v in cross_vacancies]
+    quota_pools = internal + cross
+
+    def consume(mentor_id: int) -> None:
+        for entry in quota_pools:
+            if entry['mentor_id'] == mentor_id:
+                entry['quota_left'] = max(0, entry['quota_left'] - 1)
+
     pool = list(candidates)
     used: set[int] = set()
     allocations: list[dict] = []
@@ -307,7 +318,7 @@ def plan_adjustments(
                 }
             )
             used.add(chosen.student_id)
-            vacancy['quota_left'] -= 1
+            consume(vacancy['mentor_id'])
 
     for vacancy in cross:
         while vacancy['quota_left'] > 0:
@@ -326,7 +337,7 @@ def plan_adjustments(
                 }
             )
             used.add(chosen.student_id)
-            vacancy['quota_left'] -= 1
+            consume(vacancy['mentor_id'])
 
     talk = [
         {'student_id': c.student_id, 'lab_id': c.lab_id, 'mode': 'talk'}

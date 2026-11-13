@@ -334,16 +334,21 @@ def fill_vacancy(db: Session, *, mentor_id: int, round_id: int | None,
     }
 
 
-def _vacancies(db: Session) -> tuple[list[dict], list[dict]]:
-    internal: list[dict] = []
-    cross: list[dict] = []
+def _vacancies(db: Session) -> list[dict]:
+    """所有仍有余额的在职导师，形如 ``{'mentor_id','lab_id','quota_left'}``。
+
+    调剂分两轮使用同一份名单：先在**同实训室**范围内按内部服从匹配，
+    再在**全院任意实训室**范围内按跨室服从匹配。
+    """
+    vacancies: list[dict] = []
     for mentor in db.query(models.Mentor).filter(models.Mentor.is_active.is_(True)).all():
         left = remaining_quota(db, mentor)
         if left <= 0:
             continue
-        entry = {'mentor_id': mentor.id, 'lab_id': mentor.lab_id, 'quota_left': left}
-        (internal if mentor.lab_id else cross).append(entry)
-    return internal, cross
+        vacancies.append(
+            {'mentor_id': mentor.id, 'lab_id': mentor.lab_id, 'quota_left': left}
+        )
+    return vacancies
 
 
 def _unplaced_students(db: Session, round_id: int) -> list[sel.Candidate]:
@@ -386,14 +391,13 @@ def adjust(db: Session, *, round_id: int, dry_run: bool, confirm_minutes: int,
     if not db.get(models.Round, round_id):
         raise AppError(ErrorCode.NOT_FOUND, f'轮次 {round_id} 不存在')
 
-    internal, cross_pool = _vacancies(db)
-    # 跨实训室调剂池 = 所有有余额的导师；内部池只保留有余额的导师
-    cross = [dict(v) for v in internal] + cross_pool
+    # 同一份余额名单供两轮使用；plan_adjustments 会按导师同步扣减，避免超发
+    vacancies = _vacancies(db)
     candidates = _unplaced_students(db, round_id)
     if not candidates:
         return {'allocations': [], 'talk_list': [], 'offers_created': 0}
 
-    allocations, talk = sel.plan_adjustments(candidates, internal, cross)
+    allocations, talk = sel.plan_adjustments(candidates, vacancies, vacancies)
 
     created = 0
     if not dry_run:
