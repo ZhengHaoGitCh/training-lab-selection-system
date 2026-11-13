@@ -178,3 +178,64 @@ def test_cross_adjustment_can_place_student_from_any_lab():
     assert allocations[0]['student_id'] == 1
     assert allocations[0]['mode'] == 'cross'
     assert talk == []
+
+
+def test_adjustment_never_oversells_shared_mentor_quota():
+    """同一导师同时出现在内部池与跨室池时，名额按导师共享，不得超发。
+
+    回归：曾两次各自扣减同一份 quota_left，导致 1 个名额分出 2 人。
+    """
+    internal = [{'mentor_id': 10, 'lab_id': 2, 'quota_left': 1}]
+    cross = [{'mentor_id': 10, 'lab_id': 2, 'quota_left': 1}]
+    candidates = [
+        Candidate(1, lab_id=2, score=90, obey_internal=True, obey_cross=True),
+        Candidate(2, lab_id=2, score=80, obey_internal=True, obey_cross=True),
+    ]
+    allocations, talk = plan_adjustments(candidates, internal, cross)
+
+    assigned = [a for a in allocations if a['mentor_id'] == 10]
+    assert len(assigned) == 1, f'导师 10 只剩 1 个名额，却分配了 {len(assigned)} 人'
+    assert assigned[0]['student_id'] == 1  # 高分优先
+    assert [t['student_id'] for t in talk] == [2]
+
+
+def test_adjustment_shares_quota_across_many_mentors():
+    """多个导师的重复出现都应共享名额。"""
+    vacancies = [
+        {'mentor_id': 10, 'lab_id': 2, 'quota_left': 2},
+        {'mentor_id': 20, 'lab_id': 3, 'quota_left': 1},
+    ]
+    candidates = [
+        Candidate(1, lab_id=2, score=99, obey_internal=True, obey_cross=True),
+        Candidate(2, lab_id=2, score=98, obey_internal=True, obey_cross=True),
+        Candidate(3, lab_id=2, score=97, obey_internal=True, obey_cross=True),
+        Candidate(4, lab_id=2, score=96, obey_internal=True, obey_cross=True),
+    ]
+    allocations, talk = plan_adjustments(candidates, vacancies, vacancies)
+
+    per_mentor: dict[int, int] = {}
+    for item in allocations:
+        per_mentor[item['mentor_id']] = per_mentor.get(item['mentor_id'], 0) + 1
+    assert per_mentor == {10: 2, 20: 1}, per_mentor
+    assert len(allocations) == 3
+    assert sorted(t['student_id'] for t in talk) == [4]
+
+
+def test_rank_interviews_honours_waitlist_and_internal_params():
+    """waitlist_size / internal_ratio 必须是生效参数（曾与配置项脱节）。"""
+    interviews = [
+        Interview(sid, 1, 25, 20, 35, 20 - sid) for sid in range(1, 9)
+    ]
+
+    strict = rank_interviews(interviews, 2, waitlist_size=1, internal_ratio=0.5)
+    # waitlist_slots = max(waitlist_size, quota) = max(1, 2) = 2
+    assert [strict[s].value for s in range(1, 9)] == [
+        'proposed', 'proposed', 'internal_candidate', 'waitlist',
+        'waitlist', 'rejected', 'rejected', 'rejected',
+    ]
+
+    loose = rank_interviews(interviews, 2, waitlist_size=5, internal_ratio=0.5)
+    assert [loose[s].value for s in range(1, 9)] == [
+        'proposed', 'proposed', 'internal_candidate', 'waitlist',
+        'waitlist', 'waitlist', 'waitlist', 'waitlist',
+    ]

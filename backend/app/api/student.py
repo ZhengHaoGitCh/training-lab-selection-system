@@ -152,7 +152,7 @@ def confirm_unique_offer(
         db,
         student=user,
         mentor_id=payload.mentor_id,
-        now=payload.now,
+        now=utcnow(),
         actor=user,
         ip=client_ip(request),
     )

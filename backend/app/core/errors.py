@@ -31,5 +31,13 @@ class AppError(Exception):
     def __init__(self, code: ErrorCode | int, message: str, status_code: int | None = None):
         self.code = int(code)
         self.message = message
-        self.status_code = status_code or _DEFAULT_STATUS.get(ErrorCode(self.code), 400)
+        self.status_code = status_code or _DEFAULT_STATUS.get(_as_error_code(self.code), 400)
         super().__init__(message)
+
+
+def _as_error_code(code: int) -> ErrorCode | None:
+    """未知错误码不做映射（回退到 400），避免构造 AppError 时抛 ValueError。"""
+    try:
+        return ErrorCode(code)
+    except ValueError:
+        return None

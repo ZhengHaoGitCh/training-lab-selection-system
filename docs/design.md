@@ -63,14 +63,16 @@ stateDiagram-v2
 | 函数 | 职责 |
 |---|---|
 | `total_score` | 四维加总并裁剪到 100 分（25/20/35/20） |
-| `rank_interviews` | 按总分降序、学号升序打破平局；产出 `proposed → internal_candidate → waitlist → rejected` |
+| `rank_interviews` | 按总分降序、学号升序打破平局；产出 `proposed → internal_candidate → waitlist → rejected`。`waitlist_size` 与 `internal_ratio` 由配置 `WAITLIST_MIN_SIZE`/`INTERNAL_CANDIDATE_RATIO` 提供 |
 | `confirm_unique_offer` | 单意向自动确认、多意向强制选择、逾期拒绝、幂等 |
 | `expire_pending_offers` | 释放逾期意向 |
 | `available_quota` | 剩余名额 = min(quota, capacity) − (confirmed + pending) |
 | `next_waitlist_candidate` | 按顺位补录一名，跳过已确认/待确认 |
-| `plan_adjustments` | 内部调剂 → 全院跨实训室调剂 → 约谈名单 |
+| `plan_adjustments` | 内部调剂 → 全院跨实训室调剂 → 约谈名单；名额按**导师**跨两轮共享扣减 |
 
-名额与容量双约束：导师名额永不超过实训室容量，避免超录。
+名额与容量双约束：导师名额永不超过实训室容量，避免超录。调剂的两轮使用同一份
+导师余额名单，同一导师在两轮中共享同一个 `quota_left`，任一分配都会同步扣减，
+防止在两轮里各自扣减同一份名额而超发。
 
 ## 5. API 约定
 
@@ -94,8 +96,9 @@ stateDiagram-v2
 
 ## 6. 测试策略
 
-- **单元测试**：`tests/test_selection.py` 覆盖分数裁剪、平局、多意向确认、幂等、逾期、递补、调剂优先级。
-- **接口测试**：`tests/test_api.py` 使用 TestClient + 临时 SQLite，覆盖注册登录、越权、志愿上限、选拔幂等、dry-run、补录、调剂、公示申诉、审计。
+- **单元测试**：`tests/test_selection.py` 覆盖分数裁剪、平局、多意向确认、幂等、逾期、递补、调剂优先级、导师名额共享不超发。
+- **接口测试**：`tests/test_api.py` 使用 TestClient + 临时 SQLite，覆盖注册登录、越权、志愿上限、选拔幂等、dry-run、补录、调剂、公示申诉、审计、轮次部分更新、分页边界、确认时间不可伪造。
+- **配置测试**：`tests/test_config.py` 覆盖 CORS 通配符与凭证互斥、生产配置告警。`tests/test_errors.py` 覆盖错误码到 HTTP 状态映射。
 - **脚本测试**：`tests/test_db_tools.py` 覆盖 SQLite 备份/恢复、迁移复制和非空目标拒绝。
 - **端到端剧本**：`scripts/demo_flow.py` 串起 7 个阶段的真实调用。
 

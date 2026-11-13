@@ -191,3 +191,8 @@ git push -u origin feature/<你的模块>
 
 - 时间窗口默认不拦截（`ENFORCE_TIME_WINDOW=false`），便于演练；正式运行设为 `true`。
 - 生产环境请替换统一身份认证/OIDC，并配置 `SECRET_KEY`、PostgreSQL、HTTPS 与审计归档。
+- 启动时会检查危险默认配置，并在日志中输出 `不安全的生产配置：...` 告警，包括
+  `DEMO_MODE=true`（演示登录免密返回管理员令牌）、`SECRET_KEY` 仍为占位值、
+  `ENFORCE_TIME_WINDOW=false`、`CORS_ORIGINS=*`。正式部署前请逐条消除。
+- `CORS_ORIGINS=*` 时后端会自动关闭 `allow_credentials`（CORS 规范禁止两者同时生效），
+  需要携带凭证请显式配置来源白名单。
